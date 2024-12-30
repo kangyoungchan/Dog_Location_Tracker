@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Maps Fullscreen</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            right: 10px; /* 오른쪽으로 이동 */
+            background: white;
+            padding: 15px; /* 내부 여백 조정 */
+            border: 1px solid #ccc;
+            z-index: 1;
+            font-size: 18px; /* 글자 크기 조정 */
+            width: auto; /* 너비 조정 */
+            height: auto; /* 높이는 자동으로 조정 */
+        }
+
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCE0pzjezcYKKu7Rh2dUXJLZTkKuhCGaw8"></script> 
+    <script>
+        var map;
+        var marker;
+        var infoElement;
+        var geocoder;
+
+        function initMap() {
+            var initialLocation = { lat: 37, lng: -122 }; // 초기 위치
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 16,
+                center: initialLocation
+            });
+
+            marker = new google.maps.Marker({
+                position: initialLocation,
+                map: map
+            });
+
+            infoElement = document.getElementById('info');
+            geocoder = new google.maps.Geocoder(); // Geocoder 초기화
+
+            // 데이터를 주기적으로 가져와서 마커를 업데이트
+            setInterval(updateMarkerPosition, 5000); // 5초마다 업데이트
+        }
+
+        function updateMarkerPosition() {
+            // 서버로부터 현재 좌표를 가져옴
+            var xhr = new XMLHttpRequest();
+            var url = 'http://121.170.42.202:9876/GPS.php'; // URL을 GET 요청으로 수정
+            xhr.open('GET', url, true);
+
+            xhr.onload = function() {
+                if (xhr.status >= 200 && xhr.status < 400) {
+                    // 서버로부터 응답 받기
+                    var data = JSON.parse(xhr.responseText);
+
+                    if (data.latitude && data.longitude) {
+                        var newPosition = { lat: data.latitude, lng: data.longitude };
+
+                        // 마커와 지도의 중심 위치를 업데이트
+                        marker.setPosition(newPosition);
+                        map.setCenter(newPosition);
+
+                        // 주소를 가져와서 표시
+                        geocoder.geocode({ location: newPosition }, function(results, status) {
+                            if (status === 'OK' && results[0]) {
+                                var address = results[0].formatted_address; // 주소
+                                var latitude = data.latitude; // 위도
+                                var longitude = data.longitude; // 경도
+
+                                // 주소와 위도 경도 표시
+                                infoElement.innerHTML = address + '<br>위도: ' + latitude + '<br>경도: ' + longitude;
+                            } else {
+                                infoElement.innerHTML = '주소를 찾을 수 없습니다.';
+                            }
+                        });
+                    }
+                } else {
+                    console.error('Error fetching data from server.');
+                }
+            };
+
+            xhr.onerror = function() {
+                console.error('Request failed.');
+            };
+
+            xhr.send(); // GET 요청
+        }
+
+        // 페이지가 로드될 때 지도 초기화
+        window.onload = initMap;
+    </script>
+</head>
+<body>
+    <div id="info">주소 정보가 여기에 표시됩니다.</div>
+    <div id="map"></div>
+</body>
+</html>
